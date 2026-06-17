@@ -1,0 +1,181 @@
+CREATE TABLE Bank_Churn (
+	CustomerId INTEGER,
+	Surname TEXT,
+	CreditScore INTEGER,
+	Geography TEXT,
+	Gender TEXT,
+	Age INTEGER,
+	Tenure INTEGER,
+	Balance REAL,
+	NumOfProducts INTEGER,
+	HasCrCard INTEGER,
+	IsActiveMember INTEGER,
+	EstimatedSalary REAL,
+	Exited INTEGER
+);
+
+CREATE TABLE Bank_Churn_CC (
+	CustomerId INTEGER,
+	Surname TEXT,
+	CreditScore INTEGER,
+	Geography TEXT,
+	Gender TEXT,
+	Age INTEGER,
+	Tenure INTEGER,
+	Balance REAL,
+	NumOfProducts INTEGER,
+	HasCrCard INTEGER,
+	IsActiveMember INTEGER,
+	EstimatedSalary REAL,
+	Exited INTEGER
+);
+
+CREATE VIEW Churned_Costumers AS
+SELECT *
+FROM Bank_Churn
+WHERE Exited = 1;
+
+INSERT INTO Bank_Churn_CC
+SELECT *
+FROM Churned_Costumers;
+
+SELECT COUNT(*)
+FROM Churned_Costumers;
+
+-- Avarage balance and Credit Score  by churn status 
+
+
+CREATE VIEW AVG_balance_CS_by_Churn_status AS
+SELECT CASE 
+	WHEN Exited = 0 THEN 'Not Churned'
+	ELSE 'Churned'
+	END AS Churn_Status,
+	AVG(Balance) AS Avg_Balance, AVG(CreditScore) AS Avg_CS
+FROM Bank_Churn
+GROUP BY Churn_Status;
+
+-- Finnancial Category analysis
+
+CREATE VIEW CoS_by_FC_FAC AS
+SELECT
+    CASE 
+        WHEN CreditScore < 500 THEN 'Low Credit Score'
+        WHEN CreditScore BETWEEN 500 AND 750 THEN 'Medium Credit Score'
+        ELSE 'High Credit Score'
+    END AS credit_score_category,
+    CASE 
+        WHEN Balance < 20000 THEN 'Low Balance'
+        WHEN Balance BETWEEN 20000 AND 100000 THEN 'Medium Balance'
+        ELSE 'High Balance'
+    END AS balance_category,  
+    COUNT(*) AS Costumer_Size
+FROM Bank_Churn
+GROUP BY balance_category, credit_score_category
+ORDER BY Costumer_Size DESC;
+
+CREATE VIEW CoR_by_FC_FAC AS
+SELECT balance_category, credit_score_category,
+Round((Costumer_Size * 100.0 / (SELECT SUM(Costumer_Size) FROM CoS_by_FC_FAC)), 2) AS Churn_rate
+FROM CoS_by_FC_FAC
+ORDER BY Churn_rate DESC;
+
+-- Churned_Customers
+
+CREATE VIEW CoS_by_FC_FCC AS
+SELECT
+    CASE 
+        WHEN CreditScore < 500 THEN 'Low Credit Score'
+        WHEN CreditScore BETWEEN 500 AND 750 THEN 'Medium Credit Score'
+        ELSE 'High Credit Score'
+    END AS credit_score_category,
+    CASE 
+        WHEN Balance < 20000 THEN 'Low Balance'
+        WHEN Balance BETWEEN 20000 AND 100000 THEN 'Medium Balance'
+        ELSE 'High Balance'
+    END AS balance_category,  
+    COUNT(*) AS Costumer_Size
+FROM Churned_Costumers
+GROUP BY balance_category, credit_score_category
+ORDER BY Costumer_Size DESC;
+
+CREATE VIEW CuR_by_FC_FCC AS
+SELECT balance_category, credit_score_category,
+ROUND((Costumer_Size * 100.0 / (SELECT SUM(Costumer_Size) FROM CoS_by_FC_FCC)), 2) AS Churn_rate
+FROM CoS_by_FC_FCC
+ORDER BY Churn_rate DESC;
+
+-- Age group and Gender Analysis
+
+CREATE VIEW CoS_by_AG_G_FAC AS
+SELECT Gender,
+    CASE 
+        WHEN Age BETWEEN 18 AND 30 THEN 'Young'
+        WHEN Age BETWEEN 31 AND 50 THEN 'Middle-Aged'
+        ELSE 'Senior'
+        END AS Age_Group,
+        COUNT(*) AS Costumer_Size
+FROM Bank_Churn
+GROUP BY Gender, Age_Group
+ORDER BY Costumer_Size DESC;
+
+
+CREATE VIEW CoR_by_AG_G_FAC AS
+SELECT Gender, Age_Group,
+Round((Costumer_Size * 100.0 / (SELECT SUM(Costumer_Size) FROM CoS_by_AG_G_FAC)), 2) AS Churn_rate
+FROM CoS_by_AG_G_FAC
+ORDER BY Churn_rate DESC;
+
+-- Churned Customers
+
+CREATE VIEW CoS_by_AG_G_FCC AS
+SELECT Gender,
+    CASE 
+        WHEN Age BETWEEN 18 AND 30 THEN 'Young'
+        WHEN Age BETWEEN 31 AND 50 THEN 'Middle-Aged'
+        ELSE 'Senior'
+        END AS Age_Group,
+        COUNT(*) AS Costumer_Size
+FROM Churned_Costumers
+GROUP BY Gender, Age_Group
+ORDER BY Costumer_Size DESC;
+
+
+CREATE VIEW CuR_by_AG_G_FCC AS
+SELECT Gender, Age_Group,
+Round((Costumer_Size * 100.0 / (SELECT SUM(Costumer_Size) FROM CoS_by_AG_G_FCC)), 2) AS Churn_rate
+FROM CoS_by_AG_G_FCC
+ORDER BY Churn_rate DESC;
+
+
+-- Location analysis
+
+CREATE VIEW AVG_B_CS_by_C AS
+SELECT Geography, AVG(Balance) AS Avg_Balance, AVG(CreditScore) AS Avg_CS
+FROM Bank_Churn
+GROUP BY Geography;
+
+CREATE VIEW CoS_by_C_FAC AS
+SELECT Geography,  COUNT(*) AS Costumer_Size
+FROM Bank_Churn
+GROUP BY Geography
+ORDER BY Costumer_Size DESC; 
+
+CREATE VIEW CoR_by_C_FAC AS
+SELECT Geography,
+ROUND((Costumer_Size * 100.0 / (SELECT SUM(Costumer_Size) FROM CoS_by_C_FAC)), 2) AS Churn_rate
+FROM CoS_by_C_FAC
+ORDER BY Churn_rate DESC;
+
+-- Churnec Customers
+
+CREATE VIEW CoS_by_C_FCC AS
+SELECT Geography,  COUNT(*) AS Costumer_Size
+FROM Churned_Costumers
+GROUP BY Geography
+ORDER BY Costumer_Size DESC; 
+
+CREATE VIEW CuR_by_C_FCC AS
+SELECT Geography,
+ROUND((Costumer_Size * 100.0 / (SELECT SUM(Costumer_Size) FROM CoS_by_C_FCC )), 2) AS Churn_rate
+FROM CoS_by_C_FCC 
+ORDER BY Churn_rate DESC;

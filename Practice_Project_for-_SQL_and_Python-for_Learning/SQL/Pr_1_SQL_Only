@@ -1,0 +1,216 @@
+-- Project 1: SQL-Only Analysis
+-- For this project, you’ll focus entirely on SQL to clean, analyze, and structure insights from the dataset. Here are some additional tasks:
+-- Data Cleaning and Preparation:
+-- Identify and handle missing values (NULL checks).
+-- Standardize inconsistent data formats, especially categorical variables like customer locations (German, French, Spanish).
+-- Remove duplicate entries and validate unique identifiers.
+-- Customer Churn Insights:
+-- Calculate the churn rate and identify key differences between churned and non-churned customers.
+
+
+SELECT
+   COUNT(*) AS churned_customers,
+   (COUNT(*) * 100.0 / (SELECT COUNT(*) FROM Bank_Churn)) AS churn_rate
+FROM Bank_Churn
+WHERE Exited = 1;
+Identify the most common products among churned customers.
+SELECT NumOfProducts, COUNT(*) AS churned_count
+FROM Bank_Churn
+WHERE Exited = 1
+GROUP BY NumOfProducts
+ORDER BY churned_count DESC;
+
+-- Determine if balance or credit score significantly impacts churn rates.
+
+
+SELECT
+   Exited,
+   AVG(Balance) AS avg_balance,
+   AVG(CreditScore) AS avg_credit_score
+FROM Bank_Churn
+GROUP BY Exited;
+SELECT CreditScore, COUNT(*) AS churned_count
+FROM Bank_Churn
+WHERE Exited = 1
+GROUP BY CreditScore
+ORDER BY CreditScore DESC;
+SELECT Balance, COUNT(*) AS churned_count
+FROM Bank_Churn
+WHERE Exited = 1
+GROUP BY Balance
+ORDER BY Balance DESC;
+
+
+SELECT COUNT(*) AS churned_count,
+CASE
+       WHEN Balance < 20000 THEN 'Low Balance'
+       WHEN Balance BETWEEN 20000 AND 100000 THEN 'Medium Balance'
+       ELSE 'High Balance'
+   END AS balance_category
+FROM Bank_Churn
+WHERE Exited = 1
+GROUP BY balance_category
+ORDER BY churned_count DESC;
+
+
+SELECT COUNT(*) AS churned_count,
+   CASE
+       WHEN CreditScore < 500 THEN 'Low Credit Score'
+       WHEN CreditScore BETWEEN 500 AND 750 THEN 'Medium Credit Score'
+       ELSE 'High Credit Score'
+   END AS credit_score_category
+FROM Bank_Churn
+WHERE Exited = 1
+GROUP BY credit_score_category
+ORDER BY churned_count DESC;
+
+
+-- Customer Segmentation with SQL:
+-- Group customers into different financial categories based on balance and credit score.
+
+CREATE VIEW customer_financial_categories AS
+SELECT CustomerId, CreditScore, Balance,
+   CASE
+       WHEN CreditScore < 500 THEN 'Low Credit Score'
+       WHEN CreditScore BETWEEN 500 AND 750 THEN 'Medium Credit Score'
+       ELSE 'High Credit Score'
+   END AS credit_score_category,
+   CASE
+       WHEN Balance < 20000 THEN 'Low Balance'
+       WHEN Balance BETWEEN 20000 AND 100000 THEN 'Medium Balance'
+       ELSE 'High Balance'
+   END AS balance_category
+FROM Bank_churn;
+
+
+SELECT credit_score_category, balance_category, COUNT(*) AS customer_count
+FROM customer_financial_categories
+GROUP BY credit_score_category, balance_category
+ORDER BY customer_count DESC;
+
+
+
+-- Identify high-value customers based on account balance and product engagement.
+
+CREATE VIEW high_value_costumers AS
+SELECT CustomerId, Surname, Balance, NumOfProducts, IsActiveMember, EstimatedSalary
+FROM Bank_Churn
+WHERE Balance > 100000
+AND NumOfProducts >= 2
+AND IsActiveMember = 1
+ORDER BY Balance DESC;
+
+CREATE VIEW hvc_category AS
+SELECT CustomerId, Surname, Balance, NumOfProducts, IsActiveMember,
+   CASE
+       WHEN Balance > 200000 AND NumOfProducts >= 3 AND IsActiveMember = 1 THEN 'VIP High-Value'
+       WHEN Balance BETWEEN 100000 AND 200000 AND NumOfProducts >= 2 THEN 'High-Value'
+       ELSE 'Regular'
+   END AS customer_category
+FROM high_value_costumers
+ORDER BY Balance DESC;
+SELECT customer_category, COUNT(*) AS customer_count
+FROM hvc_category
+GROUP BY customer_category
+ORDER BY customer_count DESC;
+
+-- Analyze product preferences by age group or customer location.
+-- Age group
+
+CREATE VIEW costumer_by_age_group AS
+SELECT CustomerId, Surname, Gender, Age, NumOfProducts,
+   CASE
+       WHEN Age BETWEEN 18 AND 30 THEN 'Young'
+       WHEN Age BETWEEN 31 AND 50 THEN 'Middle-Aged'
+       ELSE 'Senior'
+   END AS age_group
+FROM Bank_Churn;
+SELECT age_group, NumOfProducts, COUNT(NumOfProducts)
+FROM costumer_by_age_group
+GROUP BY NumOfProducts, age_group
+ORDER BY COUNT(NumOfProducts) DESC;
+
+-- Location
+
+CREATE VIEW costumer_by_location AS
+SELECT CustomerId, Surname, Geography, Gender, Age, NumOfProducts
+FROM Bank_Churn;
+SELECT Geography, NumOfProducts, COUNT(NumOfProducts)
+FROM costumer_by_location
+GROUP BY Geography, NumOfProducts
+ORDER BY COUNT(NumOfProducts) DESC;
+
+
+-- Behavioral Analysis:
+-- Compare transaction activity between churned and non-churned customers.
+
+SELECT Exited, AVG(Balance) AS avg_balance
+FROM Bank_Churn
+GROUP BY Exited;
+SELECT Exited, AVG(NumOfProducts) AS avg_products
+FROM Bank_Churn
+GROUP BY Exited;
+SELECT Exited, IsActiveMember, COUNT(*) AS customer_count
+FROM Bank_Churn
+GROUP BY Exited, IsActiveMember
+ORDER BY customer_count DESC;
+
+SELECT CASE
+	WHEN HasCrCard = 1 THEN 'Having Credit card'
+	ELSE 'No Credit card'
+	END AS CC_status,
+	COUNT(*) AS customer_count,
+	SUM(CASE WHEN Exited = 1 THEN 1 ELSE 0 END) AS churned_customers,
+	SUM(CASE WHEN Exited = 0 THEN 1 ELSE 0 END) AS non_churned_customers
+FROM Bank_Churn
+GROUP BY CC_status
+ORDER BY customer_count DESC;
+
+SELECT Geography,
+      SUM(CASE WHEN Exited = 1 THEN 1 ELSE 0 END) AS churned_customers,
+      SUM(CASE WHEN Exited = 0 THEN 1 ELSE 0 END) AS non_churned_customers
+FROM Bank_Churn
+GROUP BY Geography;
+
+-- Identify trends in account behavior based on country.
+
+SELECT Geography, AVG(Balance) AS avg_balance
+FROM Bank_Churn
+GROUP BY Geography
+ORDER BY avg_balance DESC;
+SELECT Geography, AVG(CreditScore) AS avg_credit_score
+FROM Bank_Churn
+GROUP BY Geography
+ORDER BY avg_credit_score DESC;
+
+SELECT Geography,
+      COUNT(*) AS total_customers,
+      SUM(CASE WHEN Exited = 1 THEN 1 ELSE 0 END) AS churned_customers,
+      (SUM(CASE WHEN Exited = 1 THEN 1 ELSE 0 END) * 100.0 / COUNT(*)) AS churn_rate
+FROM Bank_Churn
+GROUP BY Geography
+ORDER BY churn_rate DESC;
+
+SELECT Geography,
+      COUNT(*) AS total_customers,
+      SUM(CASE WHEN IsActiveMember = 1 THEN 1 ELSE 0 END) AS active_customers,
+      (SUM(CASE WHEN IsActiveMember = 1 THEN 1 ELSE 0 END) * 100.0 / COUNT(*)) AS activity_rate,
+      SUM(CASE WHEN Exited = 1 THEN 1 ELSE 0 END) AS churned_customers,
+      (SUM(CASE WHEN Exited = 1 THEN 1 ELSE 0 END) * 100.0 / COUNT(*)) AS churn_rate
+FROM Bank_Churn
+GROUP BY Geography
+ORDER BY churn_rate DESC;
+
+SELECT Geography, AVG(NumOfProducts) AS avg_products
+FROM Bank_Churn
+GROUP BY Geography
+ORDER BY avg_products DESC;
+
+SELECT Geography, COUNT(IsActiveMember) AS activity_size,
+	CASE
+		WHEN IsActiveMember = 1 THEN 'Active'
+		ELSE 'Not Active'
+	END AS activity_status	
+FROM Bank_Churn
+GROUP BY Geography, activity_status
+ORDER BY activity_size DESC;
