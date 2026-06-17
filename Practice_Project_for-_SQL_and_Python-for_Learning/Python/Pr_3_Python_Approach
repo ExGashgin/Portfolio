@@ -1,0 +1,130 @@
+import pandas as pd
+import numpy as np
+from matplotlib import pyplot as plt
+import seaborn as sns
+from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, classification_report
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import classification_report
+from sklearn.cluster import KMeans
+
+bc_0 = pd.read_csv('Bank_Churn.csv')
+
+bc_0 = pd.DataFrame({'Geography': ['France', 'Germany', 'Spain']})
+
+label_encoder = LabelEncoder()
+bc_0['Geography_encoded'] = label_encoder.fit_transform(bc_0['Geography'])
+print(bc_0)
+
+bc_1 = pd.read_csv('Bank_Churn.csv')
+
+bc_1 = pd.DataFrame({'Balance': [1000, 5000, 15000, 25000, 50000, 100000, 200000]})
+
+scaler_1 = MinMaxScaler()
+scaler_2 = StandardScaler()
+bc_1['Balance_scaled'] = scaler_1.fit_transform(bc_1[['Balance']])
+bc_1['Balance_standardized'] = scaler_2.fit_transform(bc_1[['Balance']])
+print(bc_1)
+
+bc_2 = pd.read_csv('Bank_Churn.csv')
+
+plt.figure(figsize=(8,6))
+sns.histplot(bc_2['Balance'], bins=30, kde=False, color="blue")
+plt.title("Churn Status Distribution by Balance")
+plt.xlabel("Balance")
+plt.ylabel("Exited (0 = Not Churned, 1 = Churned)")
+plt.show()
+
+plt.figure(figsize=(8,6))
+sns.histplot(bc_2['CreditScore'], bins=30, kde=False, color="red")
+plt.title("Churn Status Distribution by CreditScore")
+plt.xlabel("CreditScore")
+plt.ylabel("Exited (0 = Not Churned, 1 = Churned)")
+plt.show()
+
+plt.figure(figsize=(8,6))
+sns.histplot(bc_2['Age'], bins=30, kde=False, color="green")
+plt.title("Churn Status Distribution by Age")
+plt.xlabel("Age")
+plt.ylabel("Exited (0 = Not Churned, 1 = Churned)")
+plt.show()
+
+plt.figure(figsize=(8,6))
+sns.histplot(bc_2['Geography'], bins=30, kde=False, color="yellow")
+plt.title("Churn Status Distribution by Geography")
+plt.xlabel("Geography")
+plt.ylabel("Exited (0 = Not Churned, 1 = Churned)")
+plt.show()
+
+german_customers = bc_2[bc_2['Geography'] == 'Germany']
+french_customers = bc_2[bc_2['Geography'] == 'France']
+spanish_customers = bc_2[bc_2['Geography'] == 'Spain']
+print(bc_2.head())
+
+summary_stats = bc_2.groupby('Geography')[['Age', 'CreditScore', 'Balance', 'Exited']].describe()
+
+print(summary_stats)
+
+selected_features = ['CreditScore', 'Balance', 'NumOfProducts', 'Age', 'EstimatedSalary']
+bc_cluster = bc_2[selected_features]
+print(bc_cluster.head())
+
+scaler = StandardScaler()
+
+bc_scaled = scaler.fit_transform(bc_cluster)
+print(bc_scaled)
+
+scaler = MinMaxScaler()
+bc_mmscaled = scaler.fit_transform(bc_cluster)
+print(bc_mmscaled)
+num_clusters = 3  # Initial assumption
+kmeans = KMeans(n_clusters=num_clusters, random_state=42, n_init=10)
+
+bc_cluster['Cluster'] = kmeans.fit_predict(bc_scaled)
+
+print(bc_cluster.head())
+
+wcss = []
+for i in range(1, 11):  # Try 1 to 10 clusters
+    kmeans = KMeans(n_clusters=i, random_state=42, n_init=10)
+    kmeans.fit(bc_scaled)
+    wcss.append(kmeans.inertia_)  # Inertia = WCSS
+
+plt.plot(range(1, 11), wcss, marker='o')
+plt.xlabel('Number of Clusters')
+plt.ylabel('WCSS (Inertia)')
+plt.title('Elbow Method for Optimal Clusters')
+plt.show()
+
+bc_2['Cluster'] = bc_cluster['Cluster']
+
+cluster_summary = bc_2.groupby('Cluster')[['CreditScore', 'Balance', 'NumOfProducts', 'Age', 'EstimatedSalary']].mean()
+
+print(cluster_summary)
+
+plt.figure(figsize=(10, 6))
+sns.scatterplot(x=bc_2['Balance'], y=bc_2['Age'], hue=bc_2['Cluster'], palette='Set1', alpha=0.7)
+
+plt.xlabel('Balance')
+plt.ylabel('Age')
+plt.title('Customer Clusters based on Balance & Age')
+plt.legend(title="Cluster")
+plt.show()
+
+cluster_summary = bc_2.groupby('Cluster')[['CreditScore', 'Balance', 'NumOfProducts', 'Age', 'EstimatedSalary']].mean()
+
+print(cluster_summary)
+
+sns.boxplot(x=bc_2['Cluster'], y=bc_2['Balance'])
+plt.title('Balance Distribution Across Clusters')
+plt.show()
+
+sns.barplot(x=bc_2['Cluster'], y=bc_2['Exited'])
+plt.title('Churn Rate by Cluster')
+plt.ylabel('Churn Percentage')
+plt.show()
